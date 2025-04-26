@@ -1,41 +1,56 @@
 package com.example.sensors
-import android.hardware.Sensor
-import android.hardware.SensorManager
-import androidx.appcompat.app.AppCompatActivity
-import android.os.Bundle
-import android.widget.ArrayAdapter
-import android.widget.Spinner
-import android.widget.ListView
 
-class MainActivity : AppCompatActivity() {
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import android.os.Bundle
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import com.example.sensors.databinding.ActivityMainBinding
+class MainActivity : AppCompatActivity(), SensorEventListener {
+    private lateinit var binding: ActivityMainBinding
+    private lateinit var sensorManager: SensorManager
+    private var currentSensor: Sensor? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-        val sensorManager = getSystemService(SensorManager::class.java)
-        val spinner = findViewById<Spinner>(R.id.spinner)
-        val listView = findViewById<ListView>(R.id.list_sensor)
-        spinner.adapter = ArrayAdapter.createFromResource(
-            this, R.array.type_sensors, android.R.layout.simple_spinner_item
-        ).apply { setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
-        spinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(p: android.widget.AdapterView<*>?, v: android.view.View?, pos: Int, id: Long) {
-                val types = when (pos) {
-                    0 -> listOf(
-                        Sensor.TYPE_MAGNETIC_FIELD, Sensor.TYPE_LIGHT,
-                        Sensor.TYPE_PRESSURE, Sensor.TYPE_RELATIVE_HUMIDITY,
-                        Sensor.TYPE_AMBIENT_TEMPERATURE)
-                    1 -> listOf(
-                        Sensor.TYPE_ACCELEROMETER, Sensor.TYPE_GYROSCOPE,
-                        Sensor.TYPE_PROXIMITY, Sensor.TYPE_GRAVITY)
-                    else -> listOf(
-                        Sensor.TYPE_HEART_RATE, Sensor.TYPE_HEART_BEAT)
-                }
-                listView.adapter = ArrayAdapter(this@MainActivity,
-                    android.R.layout.simple_list_item_1,
-                    types.flatMap { sensorManager.getSensorList(it) ?: emptyList() }
-                        .map { it.name })
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        sensorManager = getSystemService(SensorManager::class.java)
+        binding.radioGroup.setOnCheckedChangeListener { _, checkedId ->
+            when (checkedId) {
+                R.id.lightRadio -> setupSensor(Sensor.TYPE_LIGHT, R.string.sensorAbsentL)
+                R.id.rotationRadio -> setupSensor(Sensor.TYPE_ROTATION_VECTOR, R.string.sensorAbsentR)
+                R.id.accelRadio -> setupSensor(Sensor.TYPE_ACCELEROMETER, R.string.sensorAbsentA)
             }
-            override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
         }
+        binding.radioGroup.check(R.id.lightRadio)
+    }
+    private fun setupSensor(sensorType: Int, errorRes: Int) {
+        sensorManager.unregisterListener(this)
+        sensorManager.getDefaultSensor(sensorType)?.let {
+            currentSensor = it
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
+        } ?: run {
+            Toast.makeText(this, errorRes, Toast.LENGTH_SHORT).show()
+            binding.sensorDataText.text = getString(errorRes)
+        }
+    }
+    override fun onSensorChanged(event: SensorEvent) {
+        binding.sensorDataText.text = when (event.sensor.type) {
+            Sensor.TYPE_LIGHT -> "Освещенность: ${event.values[0]} lux"
+            Sensor.TYPE_ROTATION_VECTOR -> "Проекция вектора по осям:\nX: ${event.values[0]}\nY: ${event.values[1]}\nZ: ${event.values[2]}"
+            Sensor.TYPE_ACCELEROMETER -> "Динамическое ускарение по осям::\nX: ${event.values[0]}\nY: ${event.values[1]}\nZ: ${event.values[2]}"
+            else -> "Неизвестный датчик"
+        }
+    }
+    override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {}
+    override fun onResume() {
+        super.onResume()
+        currentSensor?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL) }
+    }
+    override fun onPause() {
+        super.onPause()
+        sensorManager.unregisterListener(this)
     }
 }
