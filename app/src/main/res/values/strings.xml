@@ -1,9 +1,9 @@
 <resources>
     <string name="app_name">Датчики</string>
-
-    <string-array name="type_sensors">
-        <item>Датчики окружающей среды</item>
-        <item>Датчики положения устройства</item>
-        <item>Датчики состояния человека</item>
-    </string-array>
+    <string name="light">Показания освещённости</string>
+    <string name="rotor">Показания углов вращения</string>
+    <string name="accelerometer">Показания акселерометра</string>
+    <string name="sensorAbsentL">отсутствует датчик освещенности</string>
+    <string name="sensorAbsentR">отсутствует датчик вектора вращения</string>
+    <string name="sensorAbsentA">отсутствует датчик вращения относительно геомагнитного поля</string>
 </resources>
